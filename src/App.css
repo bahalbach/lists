@@ -1,5 +1,9 @@
 .App {
-  text-align: center;
+  text-align: left;
+}
+
+.ListChildren {
+  margin-left: 10px;
 }
 
 .App-logo {
