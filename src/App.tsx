@@ -58,7 +58,10 @@ function ListItem(props: { nodeId: string; text: string, desc: string, children:
             <textarea
               value={description}
               autoFocus={true}
-              onBlur={() => setEditMode(EditModes.None)}
+              onBlur={() => {
+                setEditMode(EditModes.None)
+                props.global.saveChangedDescription(props.nodeId, description);
+              }}
               onChange={function (e) { setDescription(e.currentTarget.value) }}
             /> :
             <div>
@@ -73,7 +76,7 @@ function ListItem(props: { nodeId: string; text: string, desc: string, children:
           const node = props.global.nodes.find(node => node.id === relation.childId)
           const text = node!.text;
           const desc = node!.desc;
-          const children = props.global.children.filter(relation => relation.parentId === props.nodeId);
+          const children = props.global.children.filter(newRelation => newRelation.parentId === relation.childId);
           return <ListItem key={relation.childId} nodeId={relation.childId} text={text} desc={desc} children={children} global={props.global} />
         })}
 
@@ -114,21 +117,25 @@ function App() {
     let newNodes = nodes.slice();
     const nodeIndex = nodes.findIndex(node => nodeId === node.id);
     const node = nodes[nodeIndex];
-    newNodes[nodeIndex] = { id: node.id, text: title, desc: node.desc };
-    setNodeHistory(nodeHistory.slice(0, historyIndex + 1).concat([newNodes]));
-    setChildrenHistory(childrenHistory.slice(0, historyIndex + 1).concat([children]));
-    setHistoryIndex(historyIndex + 1);
-    console.log("New title: ", title);
+    if (node.text !== title) {
+      newNodes[nodeIndex] = { id: node.id, text: title, desc: node.desc };
+      setNodeHistory(nodeHistory.slice(0, historyIndex + 1).concat([newNodes]));
+      setChildrenHistory(childrenHistory.slice(0, historyIndex + 1).concat([children]));
+      setHistoryIndex(historyIndex + 1);
+      console.log("New title: ", title);
+    }
   }
 
   const saveChangedDescription = (nodeId: string, description: string) => {
     let newNodes = nodes.slice();
     const nodeIndex = nodes.findIndex(node => nodeId === node.id);
     const node = nodes[nodeIndex];
-    newNodes[nodeIndex] = { id: node.id, text: node.text, desc: description };
-    setNodeHistory(nodeHistory.slice(0, historyIndex + 1).concat([newNodes]));
-    setChildrenHistory(childrenHistory.slice(0, historyIndex + 1).concat([children]));
-    setHistoryIndex(historyIndex + 1);
+    if (node.desc !== description) {
+      newNodes[nodeIndex] = { id: node.id, text: node.text, desc: description };
+      setNodeHistory(nodeHistory.slice(0, historyIndex + 1).concat([newNodes]));
+      setChildrenHistory(childrenHistory.slice(0, historyIndex + 1).concat([children]));
+      setHistoryIndex(historyIndex + 1);
+    }
   }
 
   const addChild = (parentId: string) => () => {
@@ -199,7 +206,7 @@ function App() {
         const node = nodes.find(node => node.id === relation.childId)
         const text = node!.text;
         const desc = node!.desc;
-        const newChildren = children.filter(relation => relation.parentId === defaultId);
+        const newChildren = children.filter(newRelation => newRelation.parentId === relation.childId);
         return <ListItem key={relation.childId} nodeId={relation.childId} text={text} desc={desc} children={newChildren} global={{ nodes, children, addChild, removeThis, saveChangedTitle, saveChangedDescription }} />
       })}
 
