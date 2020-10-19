@@ -16,20 +16,17 @@ const defaultDesc = ""
 const defaultList: Node[] = [];
 const defaultChildren: ChildRelation[] = [];
 
-function ListItem(props: { nodeId: string; nodes: Node[], children: ChildRelation[], addChild: any, removeThis: any }) {
+function ListItem(props: { nodeId: string; text: string, desc: string, children: ChildRelation[], global: { nodes: Node[], children: ChildRelation[], addChild: any, removeThis: any, saveChangedTitle: any, saveChangedDescription: any } }) {
   /*
     Displays text for this item, after the text there is a button to go into edit mode
     When clicked in normal mode expand child elements
   */
-  const node = props.nodes.find(node => node.id === props.nodeId)
-  const text = node?.text;
-  const desc = node?.desc;
-  const children = props.children.filter(relation => relation.parentId === props.nodeId);
 
   const [editMode, setEditMode] = useState(EditModes.None);
-  const [title, setTitle] = useState(text+props.nodeId);
-  const [description, setDescription] = useState(desc);
+  const [title, setTitle] = useState(props.text);
+  const [description, setDescription] = useState(props.desc);
 
+  console.log("Render: ", props.text);
   return (
     <details className="ListItem">
 
@@ -39,14 +36,17 @@ function ListItem(props: { nodeId: string; nodes: Node[], children: ChildRelatio
             type="text"
             value={title}
             autoFocus={true}
-            onBlur={() => setEditMode(EditModes.None)}
+            onBlur={() => {
+              setEditMode(EditModes.None)
+              props.global.saveChangedTitle(props.nodeId, title);
+            }}
             onChange={function (e) { setTitle(e.currentTarget.value) }}
-            onFocus={function (e) {e.currentTarget.select()}}
+            onFocus={function (e) { e.currentTarget.select() }}
           /> :
           <span>
-            {title}
-            <button className="EditButton EditTitleButton" onClick={() => { setEditMode(EditModes.Title) }}>Edit</button>
-            <button className="EditButton RemoveTitleButton" onClick={props.removeThis(props.nodeId)}>Remove</button>
+            {props.text}
+            <button className="EditButton EditTitleButton" onClick={() => { setTitle(props.text); setEditMode(EditModes.Title); }}>Edit</button>
+            <button className="EditButton RemoveTitleButton" onClick={props.global.removeThis(props.nodeId)}>Remove</button>
           </span>
         }
       </summary>
@@ -62,19 +62,23 @@ function ListItem(props: { nodeId: string; nodes: Node[], children: ChildRelatio
               onChange={function (e) { setDescription(e.currentTarget.value) }}
             /> :
             <div>
-              {description}
+              {props.desc}
               <br />
-              <button className="EditButton EditDescriptionButton" onClick={() => { setEditMode(EditModes.Description) }}>Edit</button>
+              <button className="EditButton EditDescriptionButton" onClick={() => { setDescription(props.desc); setEditMode(EditModes.Description); }}>Edit</button>
             </div>
           }
         </div>
 
-        {children.map(relation =>
-          <ListItem key={relation.childId} nodeId={relation.childId} nodes={props.nodes} children={props.children} addChild={props.addChild} removeThis={props.removeThis} />
-        )}
+        {props.children.map(relation => {
+          const node = props.global.nodes.find(node => node.id === relation.childId)
+          const text = node!.text;
+          const desc = node!.desc;
+          const children = props.global.children.filter(relation => relation.parentId === props.nodeId);
+          return <ListItem key={relation.childId} nodeId={relation.childId} text={text} desc={desc} children={children} global={props.global} />
+        })}
 
         <div>
-          <button onClick={props.addChild(props.nodeId)} className="AddChildButton">
+          <button onClick={props.global.addChild(props.nodeId)} className="AddChildButton">
             +
           </button>
         </div>
@@ -106,10 +110,31 @@ function App() {
   console.log("Nodes: ", nodes);
   console.log("Children: ", children);
 
+  const saveChangedTitle = (nodeId: string, title: string) => {
+    let newNodes = nodes.slice();
+    const nodeIndex = nodes.findIndex(node => nodeId === node.id);
+    const node = nodes[nodeIndex];
+    newNodes[nodeIndex] = { id: node.id, text: title, desc: node.desc };
+    setNodeHistory(nodeHistory.slice(0, historyIndex + 1).concat([newNodes]));
+    setChildrenHistory(childrenHistory.slice(0, historyIndex + 1).concat([children]));
+    setHistoryIndex(historyIndex + 1);
+    console.log("New title: ", title);
+  }
+
+  const saveChangedDescription = (nodeId: string, description: string) => {
+    let newNodes = nodes.slice();
+    const nodeIndex = nodes.findIndex(node => nodeId === node.id);
+    const node = nodes[nodeIndex];
+    newNodes[nodeIndex] = { id: node.id, text: node.text, desc: description };
+    setNodeHistory(nodeHistory.slice(0, historyIndex + 1).concat([newNodes]));
+    setChildrenHistory(childrenHistory.slice(0, historyIndex + 1).concat([children]));
+    setHistoryIndex(historyIndex + 1);
+  }
+
   const addChild = (parentId: string) => () => {
     const childId = nanoid();
-    setNodeHistory(nodeHistory.slice(0,historyIndex+1).concat([[...nodes, { id: childId, text: defaultText, desc: defaultDesc }]]));
-    setChildrenHistory(childrenHistory.slice(0,historyIndex+1).concat([[...children, { parentId, childId }]]));
+    setNodeHistory(nodeHistory.slice(0, historyIndex + 1).concat([[...nodes, { id: childId, text: defaultText, desc: defaultDesc }]]));
+    setChildrenHistory(childrenHistory.slice(0, historyIndex + 1).concat([[...children, { parentId, childId }]]));
     setHistoryIndex(historyIndex + 1);
   }
 
@@ -129,8 +154,8 @@ function App() {
     }
     console.log("Removed ids: ", idsRemoved);
 
-    setNodeHistory(nodeHistory.slice(0,historyIndex+1).concat([newNodes]));
-    setChildrenHistory(childrenHistory.slice(0,historyIndex+1).concat([newChildren]));
+    setNodeHistory(nodeHistory.slice(0, historyIndex + 1).concat([newNodes]));
+    setChildrenHistory(childrenHistory.slice(0, historyIndex + 1).concat([newChildren]));
     setHistoryIndex(historyIndex + 1);
   }
 
@@ -145,7 +170,7 @@ function App() {
             autoFocus={true}
             onBlur={() => setEditMode(EditModes.None)}
             onChange={function (e) { setTitle(e.currentTarget.value) }}
-            onFocus={function (e) {e.currentTarget.select()}}
+            onFocus={function (e) { e.currentTarget.select() }}
           /> :
           <span>
             {title}
@@ -170,9 +195,13 @@ function App() {
         }
       </div>
 
-      {children.filter(relation => relation.parentId === defaultId).map(relation =>
-        <ListItem key={relation.childId} nodeId={relation.childId} nodes={nodes} children={children} addChild={addChild} removeThis={removeThis} />
-      )}
+      {children.filter(relation => relation.parentId === defaultId).map(relation => {
+        const node = nodes.find(node => node.id === relation.childId)
+        const text = node!.text;
+        const desc = node!.desc;
+        const newChildren = children.filter(relation => relation.parentId === defaultId);
+        return <ListItem key={relation.childId} nodeId={relation.childId} text={text} desc={desc} children={newChildren} global={{ nodes, children, addChild, removeThis, saveChangedTitle, saveChangedDescription }} />
+      })}
 
       <div>
         <button onClick={addChild(defaultId)} className="AddChildButton">
