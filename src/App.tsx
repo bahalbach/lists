@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { nanoid } from 'nanoid'
 import './App.css';
 
@@ -15,6 +15,19 @@ const defaultText = "Title";
 const defaultDesc = ""
 const defaultList: Node[] = [];
 const defaultChildren: ChildRelation[] = [];
+
+const oldNodes = localStorage.getItem("nodes");
+  let startingId: string, startingText: string, startingDesc: string, startingNodes: Node[], startingChildren: ChildRelation[];
+  if (oldNodes) {
+    [startingId, startingText, startingDesc, startingNodes, startingChildren]  = JSON.parse(oldNodes);
+    console.log("Read from local:", oldNodes);
+  } else {
+    startingId = defaultId;
+    startingText = defaultText;
+    startingDesc = defaultDesc;
+    startingNodes = defaultList;
+    startingChildren = defaultChildren;
+  }
 
 function ListItem(props: { nodeId: string; text: string, desc: string, children: ChildRelation[], global: { nodes: Node[], children: ChildRelation[], addChild: any, removeThis: any, saveChangedTitle: any, saveChangedDescription: any } }) {
   /*
@@ -101,17 +114,22 @@ function SelectList() {
 
 function App() {
   const [historyIndex, setHistoryIndex] = useState(0);
-  const [nodeHistory, setNodeHistory] = useState([defaultList]);
-  const [childrenHistory, setChildrenHistory] = useState([defaultChildren]);
+  const [nodeHistory, setNodeHistory] = useState([startingNodes]);
+  const [childrenHistory, setChildrenHistory] = useState([startingChildren]);
 
   const [editMode, setEditMode] = useState(EditModes.None);
-  const [title, setTitle] = useState(defaultText);
-  const [description, setDescription] = useState(defaultDesc);
+  const [title, setTitle] = useState(startingText);
+  const [description, setDescription] = useState(startingDesc);
 
   const nodes = nodeHistory[historyIndex];
   const children = childrenHistory[historyIndex];
   console.log("Nodes: ", nodes);
   console.log("Children: ", children);
+
+  useEffect(() => {
+    localStorage.setItem("nodes", JSON.stringify([startingId, title, description, nodes, children]));
+    console.log("Wrote to local");
+  })
 
   const saveChangedTitle = (nodeId: string, title: string) => {
     let newNodes = nodes.slice();
@@ -202,7 +220,7 @@ function App() {
         }
       </div>
 
-      {children.filter(relation => relation.parentId === defaultId).map(relation => {
+      {children.filter(relation => relation.parentId === startingId).map(relation => {
         const node = nodes.find(node => node.id === relation.childId)
         const text = node!.text;
         const desc = node!.desc;
@@ -211,7 +229,7 @@ function App() {
       })}
 
       <div>
-        <button onClick={addChild(defaultId)} className="AddChildButton">
+        <button onClick={addChild(startingId)} className="AddChildButton">
           +
           </button>
       </div>
