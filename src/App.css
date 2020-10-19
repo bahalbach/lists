@@ -2,8 +2,34 @@
   text-align: left;
 }
 
+.ListItem {
+  border: black solid 1px;
+  margin: 5px;
+}
+
+.ListTitle {
+  background-color: lightgray;
+}
+
 .ListChildren {
-  margin-left: 10px;
+  margin-left: 25px;
+  border-left: black dotted 1px;
+}
+
+.ListDescription {
+  background-color: beige;
+  width: auto;
+  padding: 5px;
+  margin: 5px;
+  border: black solid 1px;
+}
+
+.AddChildButton {
+
+}
+
+.EditButton {
+  text-emphasis: strong;
 }
 
 .App-logo {
