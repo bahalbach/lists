@@ -6,6 +6,7 @@ const defaultDescription = "List Description";
 const defaultId = nanoid();
 
 const initialState: ListState = {
+    topList: defaultId,
     displayedList: defaultId,
     nodes: [{ id: defaultId, title: defaultTitle, description: defaultDescription }],
     childRelations: [],
@@ -77,6 +78,8 @@ export const listSlice = createSlice({
 
                 // change the displayed node to the new parent
                 state.displayedList = action.payload.parentId;
+                // if child is old top node, make parent new top node
+                if (state.topList === action.payload.childId) state.topList = action.payload.parentId;
             },
             // @ts-ignore
             prepare(childId: string) {
@@ -112,15 +115,23 @@ export const { changeNodeTitle, changeNodeDescription, addNode, addParentToNode,
 export const selectDisplayedNode = (state: SystemState) => {
     return state.list.present.displayedList;
 }
+export const selectTopNode = (state: SystemState) => {
+    return state.list.present.topList;
+}
+
+export const selectIsValidNode = (state: SystemState) => {
+    return state.list.present.nodes.find;
+}
 export const selectNode = (nodeId: string) => (state: SystemState) => {
     // const nodeIndex = state.list.history[state.list.historyIndex].node;
     // const childRelationsIndex = state.list.history[state.list.historyIndex].childRelation;
     // const nodes = state.list.nodeHistory[nodeIndex];
     // const childRelations = state.list.childRelationHistory[childRelationsIndex];
 
-    const node = state.list.present.nodes.find(node => node.id === nodeId)!;
+    // find the node
+    const node = state.list.present.nodes.find(node => node.id === nodeId);
     const childrenIds = state.list.present.childRelations.filter(relation => relation.parentId === nodeId).map(relation => relation.childId);
-
+    
     // console.log("Node History: ", state.list.nodeHistory);
     return ([node, childrenIds]) as [ListNode, string[]];
 }

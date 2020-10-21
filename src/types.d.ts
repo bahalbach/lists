@@ -10,6 +10,7 @@ interface ChildRelation {
 }
 
 interface ListState {
+    topList: string,
     displayedList: string,
     nodes: ListNode[],
     childRelations: ChildRelation[]
