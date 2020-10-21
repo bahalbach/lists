@@ -11,12 +11,15 @@ interface ChildRelation {
 
 interface ListState {
     displayedList: string,
-    nodeHistory: ListNode[][],
-    childRelationHistory: ChildRelation[][],
-    nodeHistoryIndex: number,
+    nodes: ListNode[],
+    childRelations: ChildRelation[]
+    // nodeHistory: ListNode[][],
+    // childRelationHistory: ChildRelation[][],
+    // history: {node: number, childRelation: number}[],
+    // historyIndex: number
 }
 
 interface SystemState {
-    list: ListState
+    list: {present: ListState}
 }
 

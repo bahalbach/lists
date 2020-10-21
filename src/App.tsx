@@ -3,7 +3,8 @@ import { nanoid } from 'nanoid'
 import './App.css';
 import { List, ListDescription, ListTitle } from './List';
 import { useDispatch, useSelector } from 'react-redux';
-import { addNode, selectDisplayedNode, selectNode } from './listSlice';
+import { addNode, addParentToNode, selectCanUndo, selectCanRedo, selectDisplayedNode, selectNode, selectNodes, changeDisplayedList } from './listSlice';
+import { ActionCreators } from 'redux-undo';
 
 const defaultId = nanoid();
 const defaultText = "Title";
@@ -11,18 +12,18 @@ const defaultDesc = ""
 const defaultList: Node[] = [];
 const defaultChildren: ChildRelation[] = [];
 
-const oldNodes = localStorage.getItem("nodes");
-let startingId: string, startingText: string, startingDesc: string, startingNodes: Node[], startingChildren: ChildRelation[];
-if (oldNodes) {
-  [startingId, startingText, startingDesc, startingNodes, startingChildren] = JSON.parse(oldNodes);
-  console.log("Read from local:", oldNodes);
-} else {
-  startingId = defaultId;
-  startingText = defaultText;
-  startingDesc = defaultDesc;
-  startingNodes = defaultList;
-  startingChildren = defaultChildren;
-}
+// const oldNodes = localStorage.getItem("nodes");
+// let startingId: string, startingText: string, startingDesc: string, startingNodes: Node[], startingChildren: ChildRelation[];
+// if (oldNodes) {
+//   [startingId, startingText, startingDesc, startingNodes, startingChildren] = JSON.parse(oldNodes);
+//   console.log("Read from local:", oldNodes);
+// } else {
+//   startingId = defaultId;
+//   startingText = defaultText;
+//   startingDesc = defaultDesc;
+//   startingNodes = defaultList;
+//   startingChildren = defaultChildren;
+// }
 
 // function ListItem(props: { nodeId: string; text: string, desc: string, children: ChildRelation[], global: { nodes: Node[], children: ChildRelation[], addChild: any, removeThis: any, saveChangedTitle: any, saveChangedDescription: any } }) {
 //   /*
@@ -99,10 +100,15 @@ if (oldNodes) {
 //   );
 // }
 
-function SelectList() {
-  return (
-    <select>
+function SelectList(props: { id: string }) {
+  const nodes = useSelector(selectNodes);
+  const dispatch = useDispatch();
 
+  const options = nodes.map(node =>
+    <option key={node.id} value={node.id}>{node.title}</option>)
+  return (
+    <select value={props.id} onChange={(e) => dispatch(changeDisplayedList(e.currentTarget.value))}>
+      {options}
     </select>
   );
 }
@@ -111,8 +117,12 @@ function App() {
   const displayedNodeId = useSelector(selectDisplayedNode);
   const [{ id, title, description }, childrenIds] = useSelector(selectNode(displayedNodeId));
   const dispatch = useDispatch();
+  const canUndo = useSelector(selectCanUndo);
+  const canRedo = useSelector(selectCanRedo);
+
   return (
     <div className="App">
+      <SelectList id={id} />
       <ListTitle id={id} title={title} />
       <ListDescription id={id} description={description} />
 
@@ -125,6 +135,29 @@ function App() {
           +
         </button>
       </div>
+
+
+      <button
+        className="ControlButton UndoButton"
+        disabled={!canUndo}
+        onClick={() => {
+          dispatch(ActionCreators.undo());
+        }}> Undo
+      </button>
+      <button
+        className="ControlButton RedoButton"
+        disabled={!canRedo}
+        onClick={() => {
+          dispatch(ActionCreators.redo());
+        }}> Redo
+      </button>
+
+      <div>
+        <button onClick={() => dispatch(addParentToNode(id))} className="AddChildButton">
+          Add Parent List
+        </button>
+      </div>
+
     </div>
   );
   // const [historyIndex, setHistoryIndex] = useState(0);

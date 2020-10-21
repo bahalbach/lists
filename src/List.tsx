@@ -2,12 +2,6 @@ import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux"
 import { addNode, changeNodeDescription, changeNodeTitle, removeNode, selectNode } from "./listSlice";
 
-enum EditModes {
-    None,
-    Title,
-    Description
-}
-
 function ListTitle(props: { id: string, title: string }) {
     const [title, setTitle] = useState(props.title);
     const [editMode, setEditMode] = useState(false);
@@ -22,10 +16,11 @@ function ListTitle(props: { id: string, title: string }) {
                     autoFocus={true}
                     onBlur={() => {
                         setEditMode(false)
-                        dispatch(changeNodeTitle({ nodeId: props.id, title }));
+                        dispatch(changeNodeTitle({ id: props.id, title }));
                     }}
                     onChange={function (e) { setTitle(e.currentTarget.value) }}
                     onFocus={function (e) { e.currentTarget.select() }}
+                    onKeyDown={function (e) { if(e.key === "Enter") e.currentTarget.blur()}}
                 /> :
                 <span>
                     {props.title}
@@ -52,9 +47,11 @@ function ListDescription(props: { id: string, description: string }) {
                     autoFocus={true}
                     onBlur={() => {
                         setEditMode(false);
-                        dispatch(changeNodeDescription({ nodeId: props.id, description }));
+                        dispatch(changeNodeDescription({ id: props.id, description }));
                     }}
                     onChange={function (e) { setDescription(e.currentTarget.value) }}
+                    onFocus={function (e) { e.currentTarget.select() }}
+                    onKeyDown={function (e) { if(e.key === "Enter") e.currentTarget.blur()}}
                 /> :
                 <div>
                     {props.description}
