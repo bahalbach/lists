@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   BrowserRouter as Router,
   Switch,
@@ -11,13 +11,13 @@ import {
 import './App.css';
 import { List, ListDescription, ListTitle } from './List';
 import { useDispatch, useSelector } from 'react-redux';
-import { addNode, addParentToNode, selectCanUndo, selectCanRedo, selectDisplayedNode, selectNode, selectNodes, changeDisplayedList, selectTopNode } from './listSlice';
+import { addList, addParentToList, selectCanUndo, selectCanRedo, selectDisplayedList, selectAllLists, selectListById, changeDisplayedList, selectTopList, dropList } from './listSlice';
 import { ActionCreators } from 'redux-undo';
 
 function Navbar() {
-  const nodes = useSelector(selectNodes);
-  const options = nodes.map(node =>
-    <li><Link to={`/${node.id}`} key={node.id} >{node.title}</Link></li>)
+  const lists = useSelector(selectAllLists);
+  const options = lists.map(list =>
+    <li><Link to={`/${list.id}`} key={list.id} >{list.title}</Link></li>)
   return (
     <nav>
       <section>
@@ -39,11 +39,11 @@ function Navbar() {
 }
 
 function SelectList(props: { id: string }) {
-  const nodes = useSelector(selectNodes);
+  const lists = useSelector(selectAllLists);
   const dispatch = useDispatch();
 
-  const options = nodes.map(node =>
-    <option key={node.id} value={node.id}>{node.title}</option>);
+  const options = lists.map(list =>
+    <option key={list.id} value={list.id}>{list.title}</option>);
   return (
     <select value={props.id} onChange={(e) => dispatch(changeDisplayedList(e.currentTarget.value))}>
       {options}
@@ -52,64 +52,79 @@ function SelectList(props: { id: string }) {
 }
 
 const MainListView = ({ match }: any) => {
-  console.log("props.id: ", match);
-  let displayedNodeId = useSelector(selectTopNode);
-  if ( match ) displayedNodeId = match.params.id;
-  
-  const [node, childrenIds] = useSelector(selectNode(displayedNodeId));
-  
+  // console.log("props.id: ", match);
+  let displayedListId = useSelector(selectTopList);
+  if (match) displayedListId = match.params.id;
+
+  const list = useSelector((state: SystemState) => selectListById(state, displayedListId));
+
   const dispatch = useDispatch();
   const canUndo = useSelector(selectCanUndo);
   const canRedo = useSelector(selectCanRedo);
 
-  if (!node) return <p>"Not a valid list"</p>;
+  const [editMode, setEditMode] = useState("EditMode");
 
-  const { id, title, description } = node;
+  if (!list) return <p>"Not a valid list"</p>;
+
+  const { id, title, description } = list;
   return (
     <React.Fragment>
-      <SelectList id={id} />
-      <ListTitle id={id} title={title} />
-      <ListDescription id={id} description={description} />
+      {/* <SelectList id={id} /> */}
+      <select value={editMode} onChange={(e) => setEditMode(e.currentTarget.value)}>
+        <option value="EditMode">Edit</option>
+        <option value="ViewMode">View</option>
+      </select>
+      <div className={editMode}
+        onDragOver={e => e.preventDefault()}
+        onDrop={e => {
+          e.stopPropagation();
+          const { id: childId, parentId: oldParentId } = JSON.parse(e.dataTransfer.getData("text/plain"));
+          dispatch(dropList({ parentId: id, childId, oldParentId }));
+          return false;
+        }}>
+        <ListTitle id={id} title={title} parentId="" />
+        <ListDescription id={id} description={description} />
 
-      {childrenIds.map(childId =>
-        <List nodeId={childId} />
-      )}
+        {list.children.map(childId =>
+          <List listId={childId} parentId={id} />
+        )}
 
-      <div>
-        <button onClick={() => dispatch(addNode(id))} className="AddChildButton">
-          +
+        <div>
+          <button onClick={() => dispatch(addList(id))} className="EditButton AddChildButton">
+            +
         </button>
-      </div>
+        </div>
 
-      <button
-        className="ControlButton UndoButton"
-        disabled={!canUndo}
-        onClick={() => {
-          dispatch(ActionCreators.undo());
-        }}> Undo
-      </button>
-      <button
-        className="ControlButton RedoButton"
-        disabled={!canRedo}
-        onClick={() => {
-          dispatch(ActionCreators.redo());
-        }}> Redo
-      </button>
-
-      <div>
-        <button onClick={() => dispatch(addParentToNode(id))} className="AddChildButton">
-          Add Parent List
+        <button
+          className="EditButton ControlButton UndoButton"
+          disabled={!canUndo}
+          onClick={() => {
+            dispatch(ActionCreators.undo());
+          }}> Undo
         </button>
+        <button
+          className="EditButton ControlButton RedoButton"
+          disabled={!canRedo}
+          onClick={() => {
+            dispatch(ActionCreators.redo());
+          }}> Redo
+        </button>
+
+        <div>
+          <button onClick={() => dispatch(addParentToList(id))} className="EditButton AddChildButton">
+            Add Parent List
+          </button>
+        </div>
       </div>
     </React.Fragment>
   );
 }
 
 function App() {
-  const defaultId = useSelector(selectTopNode);
+  const defaultId = useSelector(selectTopList);
   return (
     <Router>
-      <Navbar />
+      {/* <Navbar /> */}
       <div className="App">
         <Switch>
           <Route exact path="/">

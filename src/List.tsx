@@ -1,14 +1,18 @@
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux"
-import { addNode, changeNodeDescription, changeNodeTitle, removeNode, selectNode } from "./listSlice";
+import { addList, changeListDescription, changeListTitle, dropList, removeList, selectListById } from "./listSlice";
 
-function ListTitle(props: { id: string, title: string }) {
+function ListTitle(props: { id: string, title: string, parentId: string }) {
     const [title, setTitle] = useState(props.title);
-    const [editMode, setEditMode] = useState(false);
+    const [editMode, setEditMode] = useState(true);
     const dispatch = useDispatch();
 
+    function onDragStart(event: React.DragEvent<HTMLElement>) {
+        event.dataTransfer.setData("text/plain", JSON.stringify({ id: props.id, parentId: props.parentId }));
+    }
+
     return (
-        <summary className="ListTitle">
+        <summary className="ListTitle" >
             {editMode ?
                 <input
                     type="text"
@@ -16,11 +20,11 @@ function ListTitle(props: { id: string, title: string }) {
                     autoFocus={true}
                     onBlur={() => {
                         setEditMode(false)
-                        dispatch(changeNodeTitle({ id: props.id, title }));
+                        dispatch(changeListTitle({ id: props.id, title }));
                     }}
                     onChange={function (e) { setTitle(e.currentTarget.value) }}
                     onFocus={function (e) { e.currentTarget.select() }}
-                    onKeyDown={function (e) { if(e.key === "Enter") e.currentTarget.blur()}}
+                    onKeyDown={function (e) { if (e.key === "Enter") e.currentTarget.blur() }}
                 /> :
                 <span>
                     {props.title}
@@ -28,6 +32,10 @@ function ListTitle(props: { id: string, title: string }) {
                         setTitle(props.title);
                         setEditMode(true);
                     }}>Edit</button>
+                    <button className="EditButton DragButton"
+                        draggable="true"
+                        onDragStart={onDragStart}
+                    >Drag Here</button>
                 </span>
             }
         </summary>
@@ -47,11 +55,11 @@ function ListDescription(props: { id: string, description: string }) {
                     autoFocus={true}
                     onBlur={() => {
                         setEditMode(false);
-                        dispatch(changeNodeDescription({ id: props.id, description }));
+                        dispatch(changeListDescription({ id: props.id, description }));
                     }}
                     onChange={function (e) { setDescription(e.currentTarget.value) }}
                     onFocus={function (e) { e.currentTarget.select() }}
-                    onKeyDown={function (e) { if(e.key === "Enter") e.currentTarget.blur()}}
+                    onKeyDown={function (e) { if (e.key === "Enter") e.currentTarget.blur() }}
                 /> :
                 <div>
                     {props.description}
@@ -66,28 +74,36 @@ function ListDescription(props: { id: string, description: string }) {
     );
 }
 
-function List(props: { nodeId: string }) {
+function List({ listId, parentId }: { listId: string, parentId: string }) {
     const dispatch = useDispatch();
-    const [{id, title, description}, childrenIds] = useSelector(selectNode(props.nodeId));
+    const list = useSelector((state: SystemState) => selectListById(state, listId));
 
+    if (!list) return (<div>missing list</div>);
     return (
-        <details className="ListItem">
-            <ListTitle id={id} title={title} />
+        <details className="ListItem" open
+            onDragOver={e => e.preventDefault()}
+            onDrop={e => {
+                e.stopPropagation();
+                const { id: childId, parentId: oldParentId } = JSON.parse(e.dataTransfer.getData("text/plain"));
+                dispatch(dropList({ parentId: listId, childId, oldParentId }));
+                return false;
+            }}>
+            <ListTitle id={list.id} parentId={parentId} title={list.title} />
 
             <button className="EditButton RemoveTitleButton" onClick={() => {
-                dispatch(removeNode(id));
+                dispatch(removeList({ listId, parentId }));
             }}>Remove</button>
 
             <div className="ListChildren">
 
-                <ListDescription id={id} description={description} />
+                <ListDescription id={list.id} description={list.description} />
 
-                {childrenIds.map(childId =>
-                    <List nodeId={childId} />
+                {list.children.map(childId =>
+                    <List listId={childId} parentId={list.id} />
                 )}
 
                 <div>
-                    <button onClick={() => dispatch(addNode(id))} className="AddChildButton">
+                    <button onClick={() => dispatch(addList(list.id))} className="EditButton AddChildButton">
                         +
                     </button>
                 </div>

@@ -2,18 +2,14 @@ interface ListNode {
     id: string
     title: string
     description: string
-}
-
-interface ChildRelation {
-    parentId: string
-    childId: string
+    children: string[]
 }
 
 interface ListState {
     topList: string,
     displayedList: string,
-    nodes: ListNode[],
-    childRelations: ChildRelation[]
+    ids: string[],
+    entities: { ListNode }
     // nodeHistory: ListNode[][],
     // childRelationHistory: ChildRelation[][],
     // history: {node: number, childRelation: number}[],
@@ -21,6 +17,6 @@ interface ListState {
 }
 
 interface SystemState {
-    list: {present: ListState}
+    list: { present: ListState }
 }
 

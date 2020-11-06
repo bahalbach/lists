@@ -1,58 +1,49 @@
-import { createSlice, nanoid } from "@reduxjs/toolkit";
+import { createEntityAdapter, createSlice, EntityState, nanoid } from "@reduxjs/toolkit";
 import undoable from "redux-undo";
 
 const defaultTitle = "List Name";
-const defaultDescription = "List Description";
+const defaultDescription = "";
 const defaultId = nanoid();
 
-const initialState: ListState = {
+const listAdapter = createEntityAdapter<ListNode>();
+
+let initialState = listAdapter.getInitialState({
     topList: defaultId,
     displayedList: defaultId,
-    nodes: [{ id: defaultId, title: defaultTitle, description: defaultDescription }],
-    childRelations: [],
-    // nodeHistory: [[{id: defaultId, title: defaultTitle, description: defaultDescription}]],
-    // childRelationHistory: [[]],
-    // history: [{node: 0, childRelation: 0}],
-    // historyIndex: 0
+});
+initialState = listAdapter.addOne(initialState, { id: defaultId, title: defaultTitle, description: defaultDescription, children: [] });
+
+function descendsFrom(state: EntityState<ListNode>, { parentId, childId }: { parentId: string, childId: string }) {
+    let parentList = state.entities[parentId];
+    if (!parentList?.children) return false
+    if (parentList?.children.includes(childId)) return true;
+    for (let child of parentList.children) {
+        if (descendsFrom(state, { parentId: child, childId })) return true;
+    }
+    return false;
 }
 
 export const listSlice = createSlice({
     name: 'list',
     initialState,
     reducers: {
-        changeNodeTitle: (state, action) => {
-            state.nodes.find(node => node.id === action.payload.id)!.title = action.payload.title;
-            // const currentHistory = state.history[state.historyIndex];
-            // const nodeIndex = currentHistory.node;
-            // const currentNodes = state.nodeHistory[nodeIndex].slice();
-            // // update the title of the current node
-            // currentNodes.find(node => node.id === action.payload.id)!.title = action.payload.title;
-            // // add the new node list to the node history
-            // state.nodeHistory[nodeIndex+1] = currentNodes;
-            // // update the history pointer to point to the updated history
-            // state.historyIndex = state.historyIndex+1;
-            // state.history[state.historyIndex] = {node: nodeIndex+1, childRelation: currentHistory.childRelation};  
+        changeListTitle: (state, action: { payload: { id: string, title: string } }) => {
+            const { id, title } = action.payload;
+            const existingList = state.entities[id];
+            if (existingList) existingList.title = title;
         },
-        changeNodeDescription: (state, action) => {
-            state.nodes.find(node => node.id === action.payload.id)!.description = action.payload.description;
-            // const currentHistory = state.history[state.historyIndex];
-            // const nodeIndex = currentHistory.node;
-            // const currentNodes = state.nodeHistory[nodeIndex].slice();
-            // // update the description of the current node
-            // currentNodes.find(node => node.id === action.payload.id)!.description = action.payload.description;
-            // // add the new node list to the node history
-            // state.nodeHistory[nodeIndex+1] = currentNodes;
-            // // update the history pointer to point to the updated history
-            // state.historyIndex = state.historyIndex+1;
-            // state.history[state.historyIndex] = {node: nodeIndex+1, childRelation: currentHistory.childRelation};  
+        changeListDescription: (state, action: { payload: { id: string, description: string } }) => {
+            const { id, description } = action.payload;
+            const existingList = state.entities[id];
+            if (existingList) existingList.description = description;
         },
-        addNode: {
+        addList: {
             reducer(state, action) {
-                state.nodes.push({ id: action.payload.childId, title: action.payload.title, description: action.payload.description });
-                state.childRelations.push({ parentId: action.payload.parentId, childId: action.payload.childId });
-                // const currentHistory = state.history[state.historyIndex];
-                // const nodeIndex = currentHistory.node;
-                // const currentNodes = state.nodeHistory[nodeIndex];
+                // add the new node to the state
+                listAdapter.addOne(state, { id: action.payload.childId, title: action.payload.title, description: action.payload.description, children: [] });
+
+                // update the new child's parent (node where this was called) with the parent's new child
+                state.entities[action.payload.parentId]!.children.push(action.payload.childId);
             },
             // @ts-ignore
             prepare(parentId: string) {
@@ -66,15 +57,20 @@ export const listSlice = createSlice({
                 }
             }
         },
-        addParentToNode: {
+        addParentToList: {
             reducer(state, action) {
                 // add new parent node
-                state.nodes.push({ id: action.payload.parentId, title: action.payload.title, description: action.payload.description });
-                // if node had a parent, point that parent to the nodes new parent
-                const parent = state.childRelations.find(relation => relation.childId === action.payload.childId);
-                if (parent ) parent.childId = action.payload.parentId;
-                // add new childRelation
-                state.childRelations.push({ parentId: action.payload.parentId, childId: action.payload.childId });
+                listAdapter.addOne(state, { id: action.payload.parentId, title: action.payload.title, description: action.payload.description, children: [action.payload.childId] });
+                // if node had a parent, point that parent (now grandparent) to the nodes new parent
+                // find parent
+                const oldParent = Object.values(state.entities).find(list => list?.children.includes(action.payload.childId));
+                // if parent exists, change it's children array to include the new parent instead of the old child
+                if (oldParent) {
+                    // find old child's location in old parents children array
+                    const index = state.entities[oldParent.id]!.children.findIndex(childId => childId === action.payload.childId);
+                    // set old parents children array to have new parent in old child's location
+                    state.entities[oldParent.id]!.children[index] = action.payload.parentId;
+                }
 
                 // change the displayed node to the new parent
                 state.displayedList = action.payload.parentId;
@@ -82,6 +78,7 @@ export const listSlice = createSlice({
                 if (state.topList === action.payload.childId) state.topList = action.payload.parentId;
             },
             // @ts-ignore
+            // prepare(grandparentId: string | null, childId: string) {
             prepare(childId: string) {
                 return {
                     payload: {
@@ -93,15 +90,54 @@ export const listSlice = createSlice({
                 }
             }
         },
-        removeNode: (state, action) => {
-            let currentChildren = [action.payload];
-            // remove all nodes in list, then find children of those nodes and repeat
-            while (currentChildren.length) {
-                let idsToRemove = currentChildren;
-                state.nodes = state.nodes.filter(node => !idsToRemove.includes(node.id));
-                state.childRelations = state.childRelations.filter(relation => !idsToRemove.includes(relation.childId));
-                currentChildren = state.childRelations.filter(relation => idsToRemove.includes(relation.parentId)).map(relation => relation.childId);
-            }
+        dropList: (state, action: { payload: { parentId: string, childId: string, oldParentId: string } }) => {
+            // childId is the id of the dragged list, parentId is the id of the last where the dragged item is dropped, 
+            // oldParentId is the Id of the list that contained the dragged item.
+            const { parentId, childId, oldParentId } = action.payload;
+
+            // stop impossible/meaningless drags
+            if (!oldParentId || parentId === childId || parentId === oldParentId) return;
+
+            // check if you are dragging a list to it's own descendent
+            if (descendsFrom(state, { parentId: childId, childId: parentId })) return;
+
+            const parentList = state.entities[parentId]!;
+            //const childList = state.entities[childId]!;
+            const oldParentList = state.entities[oldParentId]!;
+
+            // find where the dragged item was and remove it from it's old containing list
+            const childsOldIndex = oldParentList.children.findIndex(id => id === childId);
+            oldParentList.children.splice(childsOldIndex, 1);
+
+            // add the dragged item as a child of it's new parent
+            parentList.children.push(childId);
+
+            // if ( childId === state.topList) {
+            //     const parentsChildren = parentList.children;
+            //     const childsChildren = childList.children;
+            //     state.topList = parentId;
+            //     parentList.children.push(childId);
+            //     childList.children.findIndex(id => id === parentI)
+            // }
+
+
+        },
+        removeList: (state, action: { payload: { listId: string, parentId: string } }) => {
+            const { listId, parentId } = action.payload;
+            const parentList = state.entities[parentId]!;
+            const index = parentList.children.findIndex(id => id === listId);
+
+            // just remove the list id from it's parents children, don't remove it because it can have multiple parents
+            parentList.children.splice(index, 1);
+
+            // 
+            // let currentChildren = [action.payload.listId];
+            // // remove all nodes in list, then find children of those nodes and repeat
+            // while (currentChildren.length) {
+            //     let idsToRemove = currentChildren;
+            //     currentChildren = currentChildren.flatMap(listId => state.entities[listId]!.children);
+            //     listAdapter.removeMany(state, idsToRemove);
+            // }
 
         },
         changeDisplayedList: (state, action) => {
@@ -110,33 +146,39 @@ export const listSlice = createSlice({
     },
 })
 
-export const { changeNodeTitle, changeNodeDescription, addNode, addParentToNode, removeNode, changeDisplayedList, undo, redo } = listSlice.actions
+export const { changeListTitle, changeListDescription, addList, addParentToList, dropList, removeList, changeDisplayedList, undo, redo } = listSlice.actions
 
-export const selectDisplayedNode = (state: SystemState) => {
+export const selectDisplayedList = (state: SystemState) => {
     return state.list.present.displayedList;
 }
-export const selectTopNode = (state: SystemState) => {
+export const selectTopList = (state: SystemState) => {
     return state.list.present.topList;
 }
 
-export const selectIsValidNode = (state: SystemState) => {
-    return state.list.present.nodes.find;
-}
-export const selectNode = (nodeId: string) => (state: SystemState) => {
-    // const nodeIndex = state.list.history[state.list.historyIndex].node;
-    // const childRelationsIndex = state.list.history[state.list.historyIndex].childRelation;
-    // const nodes = state.list.nodeHistory[nodeIndex];
-    // const childRelations = state.list.childRelationHistory[childRelationsIndex];
+// export const selectIsValidNode = (state: SystemState) => {
+//     return state.list.present.nodes.find;
+// }
+export const {
+    selectAll: selectAllLists,
+    selectById: selectListById,
+    selectIds: selectListIds,
+} = listAdapter.getSelectors((state: SystemState) => state.list.present)
 
-    // find the node
-    const node = state.list.present.nodes.find(node => node.id === nodeId);
-    const childrenIds = state.list.present.childRelations.filter(relation => relation.parentId === nodeId).map(relation => relation.childId);
-    
-    // console.log("Node History: ", state.list.nodeHistory);
-    return ([node, childrenIds]) as [ListNode, string[]];
-}
+// export const selectNode = (nodeId: string) => (state: SystemState) => {
+//     // const nodeIndex = state.list.history[state.list.historyIndex].node;
+//     // const childRelationsIndex = state.list.history[state.list.historyIndex].childRelation;
+//     // const nodes = state.list.nodeHistory[nodeIndex];
+//     // const childRelations = state.list.childRelationHistory[childRelationsIndex];
 
-export const selectNodes = (state: SystemState) => state.list.present.nodes;
+//     // find the node
+//     const node = state.list.present.nodes.find(node => node.id === nodeId);
+//     const childrenIds = state.list.present.childRelations.filter(relation => relation.parentId === nodeId).map(relation => relation.childId);
+
+//     // console.log("Node History: ", state.list.nodeHistory);
+//     return ([node, childrenIds]) as [ListNode, string[]];
+// }
+
+// export const selectNodes = (state: SystemState) => state.list.present.nodes;
 
 export const selectCanUndo = (state: any) => state.list.past.length > 0;
 export const selectCanRedo = (state: any) => state.list.future.length > 0;
