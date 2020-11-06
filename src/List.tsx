@@ -99,7 +99,7 @@ function List({ listId, parentId }: { listId: string, parentId: string }) {
                 <ListDescription id={list.id} description={list.description} />
 
                 {list.children.map(childId =>
-                    <List listId={childId} parentId={list.id} />
+                    <List key={childId} listId={childId} parentId={list.id} />
                 )}
 
                 <div>

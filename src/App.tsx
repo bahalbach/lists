@@ -86,7 +86,7 @@ const MainListView = ({ match }: any) => {
         <ListDescription id={id} description={description} />
 
         {list.children.map(childId =>
-          <List listId={childId} parentId={id} />
+          <List key={childId} listId={childId} parentId={id} />
         )}
 
         <div>
@@ -110,11 +110,11 @@ const MainListView = ({ match }: any) => {
           }}> Redo
         </button>
 
-        <div>
+        {/* <div>
           <button onClick={() => dispatch(addParentToList(id))} className="EditButton AddChildButton">
             Add Parent List
           </button>
-        </div>
+        </div> */}
       </div>
     </React.Fragment>
   );
@@ -127,11 +127,11 @@ function App() {
       {/* <Navbar /> */}
       <div className="App">
         <Switch>
-          <Route exact path="/">
+          <Route path="/lists">
             <MainListView />
           </Route>
-          <Route exact path="/:id" component={MainListView} />
-          <Redirect to="/" />
+          <Route exact path="lists/:id" component={MainListView} />
+          <Redirect to="/lists" />
         </Switch>
       </div>
     </Router>
