@@ -84,7 +84,7 @@ const MainListView = ({ match }: any) => {
   const canUndo = useSelector(selectCanUndo);
   const canRedo = useSelector(selectCanRedo);
 
-  const [editMode, setEditMode] = useState("EditMode");
+  const [editMode, setEditMode] = useState("ViewMode");
 
   if (!list) return <p>Not a valid list</p>;
 

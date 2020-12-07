@@ -11,7 +11,7 @@ import {
 
 function ListTitle(props: { id: string; title: string; parentId: string }) {
   const [title, setTitle] = useState(props.title);
-  const [editMode, setEditMode] = useState(true);
+  const [editMode, setEditMode] = useState(false);
   const dispatch = useDispatch();
 
   function onDragStart(event: React.DragEvent<HTMLElement>) {
@@ -72,39 +72,39 @@ function ListDescription(props: { id: string; description: string }) {
   const [editMode, setEditMode] = useState(false);
   const dispatch = useDispatch();
 
-  return (
-    <div className="ListDescription">
-      {editMode ? (
-        <textarea
-          value={description}
-          autoFocus={true}
-          onBlur={() => {
-            setEditMode(false);
-            dispatch(changeListDescription({ id: props.id, description }));
-          }}
-          onChange={function (e) {
-            setDescription(e.currentTarget.value);
-          }}
-          onFocus={function (e) {
-            e.currentTarget.select();
-          }}
-          // onKeyDown={function (e) { if (e.key === "Enter") e.currentTarget.blur() }}
-        />
+  return editMode ? (
+    <textarea
+      value={description}
+      autoFocus={true}
+      onBlur={() => {
+        setEditMode(false);
+        dispatch(changeListDescription({ id: props.id, description }));
+      }}
+      onChange={function (e) {
+        setDescription(e.currentTarget.value);
+      }}
+      onFocus={function (e) {
+        e.currentTarget.select();
+      }}
+      // onKeyDown={function (e) { if (e.key === "Enter") e.currentTarget.blur() }}
+    />
+  ) : (
+    <div>
+      {props.description ? (
+        <pre className="ListDescription">{props.description}</pre>
       ) : (
-        <div>
-          <pre>{props.description}</pre>
-          <br />
-          <button
-            className="EditButton EditDescriptionButton"
-            onClick={() => {
-              setDescription(props.description);
-              setEditMode(true);
-            }}
-          >
-            Edit
-          </button>
-        </div>
+        ""
       )}
+
+      <button
+        className="EditButton EditDescriptionButton"
+        onClick={() => {
+          setDescription(props.description);
+          setEditMode(true);
+        }}
+      >
+        Edit
+      </button>
     </div>
   );
 }
