@@ -61,6 +61,20 @@ function ListTitle(props: { id: string; title: string; parentId: string }) {
           >
             Drag Here
           </button>
+          {props.parentId ? (
+            <button
+              className="EditButton RemoveTitleButton"
+              onClick={() => {
+                dispatch(
+                  removeList({ listId: props.id, parentId: props.parentId })
+                );
+              }}
+            >
+              Remove
+            </button>
+          ) : (
+            ""
+          )}
         </span>
       )}
     </summary>
@@ -91,7 +105,7 @@ function ListDescription(props: { id: string; description: string }) {
   ) : (
     <div>
       {props.description ? (
-        <pre className="ListDescription">{props.description}</pre>
+        <p className="ListDescription">{props.description}</p>
       ) : (
         ""
       )}
@@ -131,16 +145,6 @@ function List({ listId, parentId }: { listId: string; parentId: string }) {
       }}
     >
       <ListTitle id={list.id} parentId={parentId} title={list.title} />
-
-      <button
-        className="EditButton RemoveTitleButton"
-        onClick={() => {
-          dispatch(removeList({ listId, parentId }));
-        }}
-      >
-        Remove
-      </button>
-
       <div className="ListChildren">
         <ListDescription id={list.id} description={list.description} />
 

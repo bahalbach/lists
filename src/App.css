@@ -3,14 +3,14 @@
 }
 
 .ListItem {
-  border: black solid 1px;
-  border-right-width: 0px;
   margin: 5px;
   margin-right: 0px;
 }
 
 .ListTitle {
   background-color: lightgray;
+  max-width: 31.6rem;
+  padding: 5px;
 }
 
 .ListChildren {
@@ -25,12 +25,12 @@
   padding-right: 0px;
   margin: 5px;
   margin-right: 0px;
-  border: black solid 1px;
-  border-right-width: 0px;
+
+  white-space: pre-wrap;
+  max-width: 30rem;
 }
 
 .AddChildButton {
-
 }
 
 .EditButton {
